@@ -46,14 +46,13 @@ Samples interventional data from the provided scm
 """
 def sample_intrv(scm: np.ndarray, intrv: np.ndarray) -> np.ndarray:
     n = scm.shape[0]
-    scm.flags.writeable = False
 
     vec = intrv + np.random.normal(np.zeros((n)), np.diag(scm))
 
     if hash(scm.tobytes()) in prev_inv: # to cache inversions of previously-queried matrices
         inv = prev_inv[hash(scm.tobytes())]
     else:
-        inv = np.linalg.inv(np.eye(n) - scm)
+        inv = np.linalg.inv(np.eye(n) - scm + np.diag(np.diag(scm))) # forgot to zero out the main diagonal
         prev_inv[hash(scm.tobytes())] = inv
 
     return inv@vec
