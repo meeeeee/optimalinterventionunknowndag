@@ -31,7 +31,7 @@ vardistro: assigns weight to a diagonal entry according to a chosen distribution
 
 Makes matrix B by choosing edge weights according to a specified distribution --- the diagonal contains the nodewise variances
 """
-def dagparam(adj: np.ndarray, edgedistro: Callable[[None], float] = lambda x: np.random.normal(1,1), vardistro: Callable[[None], float] = lambda x: np.random.normal(1,1)**2) -> np.ndarray:
+def dagparam(adj: np.ndarray, edgedistro: Callable[[None], float] = lambda _: np.random.normal(0,1), vardistro: Callable[[None], float] = lambda _: np.abs(np.random.normal(0,0.1))) -> np.ndarray:
     weights = np.vectorize(edgedistro)(adj)
     
     vars = np.vectorize(vardistro)(adj)
@@ -52,7 +52,7 @@ def sample_intrv(scm: np.ndarray, intrv: np.ndarray) -> np.ndarray:
     if hash(scm.tobytes()) in prev_inv: # to cache inversions of previously-queried matrices
         inv = prev_inv[hash(scm.tobytes())]
     else:
-        inv = np.linalg.inv(np.eye(n) - scm + np.diag(np.diag(scm))) # forgot to zero out the main diagonal
+        inv = np.linalg.inv(np.eye(n) - (scm - np.diag(np.diag(scm)))) # zero out the main diagonal
         prev_inv[hash(scm.tobytes())] = inv
 
     return inv@vec
