@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Callable
+from typing import Callable, Tuple
 
 prev_inv = dict()
 
@@ -31,12 +31,11 @@ vardistro: assigns weight to a diagonal entry according to a chosen distribution
 
 Makes matrix B by choosing edge weights according to a specified distribution --- the diagonal contains the nodewise variances
 """
-def dagparam(adj: np.ndarray, edgedistro: Callable[[None], float] = lambda _: np.random.normal(0,1), vardistro: Callable[[None], float] = lambda _: np.abs(np.random.normal(0,0.1))) -> np.ndarray:
+def dagparam(adj: np.ndarray, edgedistro: Callable[[None], float] = lambda _: np.random.normal(0,1), vardistro: Callable[[None], float] = lambda _: np.abs(np.random.normal(0,0.1))) -> Tuple[np.ndarray, np.ndarray]:
     weights = np.vectorize(edgedistro)(adj)
-    
     vars = np.vectorize(vardistro)(adj)
 
-    return weights*adj + vars*np.eye(adj.shape[0])
+    return (weights*adj + np.diag(np.random.standard_normal(adj.shape[0])), np.diag(vars))
 
 """
 scm: parameters of linear Gaussian model
@@ -44,16 +43,17 @@ intrv: shift intervention parameters
 
 Samples interventional data from the provided scm
 """
-def sample_intrv(scm: np.ndarray, intrv: np.ndarray) -> np.ndarray:
-    n = scm.shape[0]
+def sample_intrv(scm: Tuple[np.ndarray, np.ndarray], intrv: np.ndarray) -> np.ndarray:
+    # X = BX + a + e -> X = (I-B)^-1(a + e)
+    n = scm[0].shape[0]
 
-    vec = intrv + np.random.normal(np.zeros((n)), np.diag(scm))
+    vec = intrv + np.random.normal(np.zeros((n)), np.diag(scm[1]))
 
-    if hash(scm.tobytes()) in prev_inv: # to cache inversions of previously-queried matrices
-        inv = prev_inv[hash(scm.tobytes())]
-    else:
-        inv = np.linalg.inv(np.eye(n) - (scm - np.diag(np.diag(scm)))) # zero out the main diagonal
-        prev_inv[hash(scm.tobytes())] = inv
+    #if hash(scm.tobytes()) in prev_inv: # to cache inversions of previously-queried matrices
+    #    inv = prev_inv[hash(scm.tobytes())]
+    #else:
+    inv = np.linalg.inv(np.eye(n) - scm[0]) # zero out the main diagonal
+    #    prev_inv[hash(scm.tobytes())] = inv
 
     return inv@vec
 
@@ -62,5 +62,5 @@ scm: parameters of linear Gaussian model
 
 Samples observational data from the provided scm
 """
-def sample(scm: np.ndarray) -> np.ndarray:
-    return sample_intrv(scm, np.zeros(scm.shape[0]))
+def sample(scm: Tuple[np.ndarray, np.ndarray]) -> np.ndarray:
+    return sample_intrv(scm, np.zeros(scm[0].shape[0]))
