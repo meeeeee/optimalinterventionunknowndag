@@ -41,7 +41,7 @@ def dagparam(adj: np.ndarray, edgedistro: Callable[[None], float] = lambda _: np
 scm: parameters of linear Gaussian model
 intrv: shift intervention parameters
 
-Samples interventional data from the provided scm
+Samples interventional data from the provided scm (a single sample)
 """
 def sample_intrv(scm: np.ndarray, intrv: np.ndarray) -> np.ndarray:
     # X = BX + a + e -> X = (I-B)^-1(a + e)
