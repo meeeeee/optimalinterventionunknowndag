@@ -2,7 +2,7 @@ from helper import *
 from model import Model
 import numpy as np
 
-n = 4
+n = 2
 adj = erdag(n, 0.0) # increase for edges
 scm = dagparam(adj) # parameters are edge weights with vertex variances on the diagonal (we assume Bii = 0)
 data = sample(scm)
@@ -20,12 +20,13 @@ initial_nu, initial_T_inv = np.zeros(n), np.eye(n) # initial guess for nu & T_in
 #initial_T_inv = initial_T_inv@initial_T_inv.T#(np.eye(n) - scm + np.diag(np.diag(scm)))@np.diag(np.diag(scm))@(np.eye(n) - scm + np.diag(np.diag(scm))).T
 print("initial:\n", initial_nu, "\n", initial_T_inv)
 model = Model(n,n,initial_nu, initial_T_inv)
-for _ in range(10): # it's possible that even with the correct D, recovering T is incorrect and I need to figure out why
-    model.update([np.array([sample(scm) for _ in range(100)])], [intrv for _ in range(1)])
+its, samples = 500, 1000
+for it in range(its): # it's possible that even with the correct D, recovering T is incorrect and I need to figure out why
+    model.update([np.array([sample(scm) for _ in range(samples)])], [intrv for _ in range(1)], it*samples)
 
 T_inv = model.T_inv
 
-print(T_inv, model.getLGM(), scm)
+print(T_inv, model.getLGM(its*samples), scm) # B is correct
 
 # NOTE: the assumption that D can be obtained from the diagonal is incorrect (and is only apparently true for the case where there are no edges)
 # NOTE: I assume for now that the bug is caused by bad code and not by a mistake in my math

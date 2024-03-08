@@ -20,15 +20,16 @@ class Model:
     """
     data: list of samples of interventional data --- each element is a sequence of samples
     intrvs: list of interventions applied to each set of samples
+    n: number of datapoints (needed for accurate estimate of covariances)
 
     Updates model parameters (LGM MAP) given observational and/or interventional samples --- note that as long as 
     """
     # TODO: rewrite update to find best intervention, generate data using this intervention, and update the parameters with this data
-    def update(self, data: List[np.ndarray], intrvs: List[np.ndarray]):
+    def update(self, data: List[np.ndarray], intrvs: List[np.ndarray], n: int):
         assert min([sample.shape[0] > 0 for sample in data]) # check that there are no empty interventions
         
 
-        nu, T, _, B = self.nu[:], np.linalg.inv(self.T_inv), *self.getLGM() # prior parameters
+        nu, T, _, B = self.nu[:], np.linalg.inv(self.T_inv), *self.getLGM(n) # prior parameters
         N = sum(samples.shape[0] for samples in data) # number of samples over all interventional data
         IB = np.linalg.inv(np.eye(B.shape[0]) - B)
         alpha_mu, alpha_W = self.alpha_mu + N, self.alpha_W + N
@@ -50,17 +51,21 @@ class Model:
         self.alpha_mu, self.alpha_W, self.nu, self.T_inv = alpha_mu, alpha_W, nu, T_inv
 
     """
+    n: number of samples
+
     Returns estimate of D, B from parameter T^-1
     """
-    def getLGM(self) -> Tuple[np.ndarray, np.ndarray]: # TODO:TODO:TODO: CHECK THAT THIS ESTIMATION WORKS
+    def getLGM(self, n) -> Tuple[np.ndarray, np.ndarray]: # TODO:TODO:TODO: CHECK THAT THIS ESTIMATION WORKS
+        # T_inv = (I-B)D(I-B)^T (D is inverse variances) as noted in kuipers & moffa
+        # it should be true that D has estimates for inverse variances
+        #self.T_inv *= max(1,np.sqrt(n))
         D = np.diag(self.T_inv)
 
         # eigendecomposition
         L, Q = np.linalg.eigh(self.T_inv)
+        print(D, L, Q, self.T_inv)
         
-        L = np.diag(np.sqrt(L))
-        
-        B = np.eye(self.T_inv.shape[0]) - Q@L@np.diag(1/np.sqrt(D))
+        B = np.eye(self.T_inv.shape[0]) - Q@np.diag(np.sqrt(L/D))
 
         # Cholesky decomposition
         #L = np.linalg.cholesky(self.T_inv)
@@ -69,8 +74,9 @@ class Model:
         #L = L@np.diag(1/N)
         #
         #B = np.eye(self.T_inv.shape[0]) - L@np.diag(1/np.sqrt(D))
-
-        return (np.diag(D), B)
+        
+        #self.T_inv *= 1/max(1,np.sqrt(n))
+        return (1/np.sqrt(max(1,n)*D), B) # did not previously account for the number of samples and iterations when calculating the covariance
 
     """
     name: parameter name
